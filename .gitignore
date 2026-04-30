@@ -19,6 +19,19 @@ Thumbs.db
 .vscode/
 .idea/
 
+# 过程性文件夹（不上传 GitHub）
+曼城球迷采访/
+王楚淇/
+结算页面案例/
+
+# 草稿/过程性文件
+EPLTI\ 15TYPE\ Draft\ V1.0.md
+Questions
+Questions.refined.md
+types_content.md
+plan.md
+README队友文档.md
+
 # 日志
 *.log
 npm-debug.log*
