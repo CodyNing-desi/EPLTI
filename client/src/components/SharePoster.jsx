@@ -1,7 +1,7 @@
 import { forwardRef, useCallback, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Download, X } from 'lucide-react'
-import { teamNames } from '../data/types.js'
+import { teamNames } from '../data/types'
 import QRCode from 'qrcode'
 
 const dimLabels = { T: '死忠', E: '激情', S: '社交', K: '懂球', R: '韧性' }

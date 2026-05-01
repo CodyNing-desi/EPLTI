@@ -65,7 +65,12 @@ app.use((req, res, next) => {
     <meta name="twitter:description" content="${ogDesc}" />
     <meta name="twitter:image" content="${ogImage}" />`
       
-      html = html.replace('</head>', `${ogTags}\n</head>`)
+      // 优先用占位符注入 OG 标签（更稳健），fallback 到 </head> 正则
+      if (html.includes('<!-- OG_TAGS -->')) {
+        html = html.replace('<!-- OG_TAGS -->', ogTags)
+      } else {
+        html = html.replace(/<\/head\s*>/i, `${ogTags}\n</head>`)
+      }
       return res.send(html)
     }
 

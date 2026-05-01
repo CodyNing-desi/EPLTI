@@ -1,8 +1,8 @@
 // 模拟测试：验证 14 种人格在极端输入下是否能命中自身
-// 用法：node test_scoring.mjs
-import { questions } from './src/data/questions.js'
-import { types, big6Teams } from './src/data/types.js'
-import { calculateResult } from './src/engine/scoring.js'
+// 用法：npx tsx test_scoring.mjs
+import { questions } from './src/data/questions.ts'
+import { types, big6Teams } from './src/data/types.ts'
+import { calculateResult } from './src/engine/scoring.ts'
 
 const dims = ['T', 'E', 'S', 'K', 'R']
 
