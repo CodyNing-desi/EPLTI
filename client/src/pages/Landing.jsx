@@ -1,10 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, ChevronRight, Share2, Target } from 'lucide-react';
+import { Trophy, ChevronRight, Share2, Target, Users } from 'lucide-react';
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const Landing = () => {
   const navigate = useNavigate();
+  const [totalUsers, setTotalUsers] = useState(0);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/stats`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.total) setTotalUsers(data.total);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -79,7 +91,7 @@ const Landing = () => {
           <ChevronRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
         </motion.button>
 
-        <div className="mt-16 flex items-center justify-center space-x-8 text-gray-400">
+        <div className="mt-16 flex items-center justify-center space-x-6 sm:space-x-8 text-gray-400">
           <div className="flex flex-col items-center">
             <span className="text-2xl font-bold text-gray-800">18</span>
             <span className="text-[10px] uppercase tracking-widest mt-1">精选题目</span>
@@ -89,11 +101,17 @@ const Landing = () => {
             <span className="text-2xl font-bold text-gray-800">14</span>
             <span className="text-[10px] uppercase tracking-widest mt-1">人格类型</span>
           </div>
-          <div className="h-8 w-[1px] bg-gray-200"></div>
-          <div className="flex flex-col items-center">
-            <span className="text-2xl font-bold text-gray-800">99%</span>
-            <span className="text-[10px] uppercase tracking-widest mt-1">球迷共鸣</span>
-          </div>
+          {totalUsers > 0 && (
+            <>
+              <div className="h-8 w-[1px] bg-gray-200"></div>
+              <div className="flex flex-col items-center">
+                <span className="text-2xl font-black" style={{ color: '#E90052' }}>
+                  {totalUsers.toLocaleString()}
+                </span>
+                <span className="text-[10px] uppercase tracking-widest mt-1 font-bold text-gray-600">人已完成测验</span>
+              </div>
+            </>
+          )}
         </div>
       </motion.div>
 
