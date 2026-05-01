@@ -30,9 +30,11 @@ app.get('/api/health', (req, res) => {
 app.use(express.static(path.join(__dirname, '../client/dist')))
 
 // SPA 路由 fallback：所有非 API 请求都返回 index.html
-app.get('*', (req, res) => {
+app.use((req, res, next) => {
   if (!req.path.startsWith('/api')) {
     res.sendFile(path.join(__dirname, '../client/dist/index.html'))
+  } else {
+    next()
   }
 })
 
