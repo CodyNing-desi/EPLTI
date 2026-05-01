@@ -145,28 +145,47 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
               </h2>
             </div>
 
-            {/* 类型码 */}
-            <div className="flex justify-center gap-3 mb-4">
-              <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-xs font-mono font-bold tracking-wider"
-                style={{ color: teamColor }}>
-                {type.code}
+            {/* 徽章 */}
+            <div className="flex justify-center gap-2 mb-6">
+              <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                Personality Type
               </span>
               {type.team !== 'GEN' && (
-                <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-xs text-gray-500 font-medium">
+                <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[10px] font-bold text-gray-500 tracking-widest">
                   {teamNames[type.team]}
                 </span>
               )}
             </div>
 
-            {/* 人格名称 */}
-            <h1 className="text-5xl font-black text-center mb-1 tracking-tight text-gray-900 break-words">
-              {type.name}
-            </h1>
+            {/* 人格名称与英文代号 Lockup */}
+            <div className="relative text-center mb-6 mt-2">
+              {/* 背景巨大的英文代号水印 */}
+              <div 
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-7xl font-black opacity-[0.04] pointer-events-none uppercase tracking-tighter w-full whitespace-nowrap"
+                style={{ color: teamColor }}
+              >
+                {type.code}
+              </div>
+              
+              {/* 前景中英文 */}
+              <div className="relative z-10">
+                <p className="text-sm font-black tracking-widest uppercase mb-1.5" style={{ color: teamColor }}>
+                  {type.code}
+                </p>
+                <h1 className="text-4xl font-black tracking-tight text-gray-900 break-words leading-tight px-2">
+                  {type.name}
+                </h1>
+              </div>
+            </div>
 
             {/* 插图预留区 */}
-            <div className="flex justify-center mb-4 mt-2">
-              <div className="w-40 h-40 bg-white border border-gray-100 shadow-sm rounded-[1.5rem] flex items-center justify-center relative overflow-hidden">
-                 <img src={`/images/${type.code}.png`} alt={type.name} className="w-full h-full object-contain mix-blend-multiply" />
+            <div className="flex justify-center mb-6">
+              <div className="w-44 h-44 bg-gray-50/50 rounded-full flex items-center justify-center relative overflow-hidden">
+                 <img 
+                   src={`/images/${type.code}.png`} 
+                   alt={type.name} 
+                   className="w-[110%] h-[110%] object-contain mix-blend-multiply drop-shadow-sm" 
+                 />
               </div>
             </div>
 
