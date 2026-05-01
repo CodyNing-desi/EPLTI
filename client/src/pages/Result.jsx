@@ -2,9 +2,10 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Share2, Download, RotateCcw, Home, Users } from 'lucide-react'
-import { types, teamNames } from '../data/types.js'
-import { calculateResult } from '../engine/scoring.js'
+import { types, teamNames } from '../data/types'
+import { calculateResult } from '../engine/scoring'
 import SharePoster from '../components/SharePoster.jsx'
+import { useWechatShare } from '../hooks/useWechatShare'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
@@ -105,34 +106,76 @@ const Result = () => {
 
   const type = types.find(t => t.code === code)
 
+  useWechatShare({
+    title: `我是 ${type?.name || ''} 型球迷，你也来测测吧！`,
+    desc: type?.description || `EPLTI (英超球迷人格测试) 基于T-E-S-K-R模型，快来看看你属于哪种人格类型。`,
+    link: window.location.href,
+    imgUrl: `${window.location.origin}/images/${type?.code || 'ZERO'}.png`
+  })
+
   // 尝试从 sessionStorage 读取（Quiz 页写入）
   const stored = (() => {
     try { return JSON.parse(sessionStorage.getItem('quizResult')) } catch { return null }
   })()
 
-  // 尝试从 URL 解码答案（分享链接场景）
+  // 尝试从 URL id 恢复 (分享链接，优先级最高)
+  const urlId = new URLSearchParams(location.search).get('id')
+
+  // 尝试从 URL 解码答案（向后兼容 fallback）
   const urlAnswers = (() => {
     try {
-      const params = new URLSearchParams(location.search)
-      const encoded = params.get('ans')
+      const encoded = new URLSearchParams(location.search).get('ans')
       if (encoded) return JSON.parse(atob(encoded))
     } catch { /* ignore */ }
     return null
   })()
 
-  // 优先用 sessionStorage，否则用 URL 答案重新计算
-  let normalized = stored?.normalized || null
-  let runnerUp = stored?.runnerUp || null
-  let detectedTeam = stored?.detectedTeam || null
-  let answers = stored?.answers || null
+  // 服务端恢复的状态，避免 window.location.reload()
+  const [recoveredData, setRecoveredData] = useState(null)
+  const [loadingRecover, setLoadingRecover] = useState(false)
 
-  if ((!normalized || !runnerUp) && urlAnswers) {
+  useEffect(() => {
+    if (!urlId) return
+    // 已有 sessionStorage 数据，无需恢复
+    if (stored && stored.normalized && stored.runnerUp) return
+
+    setLoadingRecover(true)
+    fetch(`${API_BASE}/api/result/${urlId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok && data.data && data.data.answers) {
+          const recalculated = calculateResult(data.data.answers)
+          const recovered = {
+            type: types.find(t => t.code === data.data.type_code) || type,
+            runnerUp: types.find(t => t.code === data.data.runner_up) || recalculated.runnerUp,
+            normalized: recalculated.normalized,
+            rawScores: recalculated.rawScores,
+            detectedTeam: data.data.detected_team,
+            answers: data.data.answers,
+          }
+          // 回填 sessionStorage 以便后续刷新可用
+          try { sessionStorage.setItem('quizResult', JSON.stringify(recovered)) } catch { /* ignore */ }
+          setRecoveredData(recovered)
+        }
+        setLoadingRecover(false)
+      })
+      .catch(() => setLoadingRecover(false))
+  }, [urlId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 合并数据源：sessionStorage > 服务端恢复 > URL base64
+  const resolved = recoveredData || stored
+
+  let normalized = resolved?.normalized || null
+  let runnerUp = resolved?.runnerUp || null
+  let detectedTeam = resolved?.detectedTeam || null
+  let answers = resolved?.answers || null
+
+  if (!resolved && urlAnswers) {
     const recalculated = calculateResult(urlAnswers)
     normalized = recalculated.normalized
     runnerUp = recalculated.runnerUp
     detectedTeam = recalculated.detectedTeam
     answers = urlAnswers
-    // 回填 sessionStorage
     try {
       sessionStorage.setItem('quizResult', JSON.stringify({
         type,
@@ -145,48 +188,33 @@ const Result = () => {
     } catch { /* ignore */ }
   }
 
-  // 提交结果到后端 & 拉取统计数据
+  // 拉取统计数据
   useEffect(() => {
-    if (!type) return
-    const submitKey = `resultSubmitted_${code}`
-
-    async function submitAndFetch() {
+    if (!code) return
+    async function fetchStats() {
       try {
-        // 防重复提交：同一个结果只提交一次
-        if (!sessionStorage.getItem(submitKey)) {
-          const res = await fetch(`${API_BASE}/api/result`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type_code: code,
-              runner_up: runnerUp?.code || null,
-              detected_team: detectedTeam,
-              answers: answers,
-            }),
-          })
-          if (res.ok) {
-            const data = await res.json()
-            sessionStorage.setItem(submitKey, '1')
-            if (data.stats) {
-              setStats(data.stats)
-              return
-            }
-          }
-        }
-        // 已提交过或提交失败，直接拉统计
         const res = await fetch(`${API_BASE}/api/stats`)
         if (res.ok) {
           const data = await res.json()
           setStats(data)
         }
       } catch {
-        // 后端不可用时静默失败，不影响现有功能
         console.warn('Stats API unavailable, skipping.')
       }
     }
+    fetchStats()
+  }, [code])
 
-    submitAndFetch()
-  }, [code]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (loadingRecover) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="w-12 h-12 rounded-full border-4 border-gray-300 border-t-emerald-500 animate-spin mb-4"></div>
+          <p className="text-gray-500 text-sm font-medium tracking-widest">正在恢复测试结果...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!type) {
     return (

@@ -2,8 +2,8 @@ import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { questions } from '../data/questions.js'
-import { calculateResult } from '../engine/scoring.js'
+import { questions } from '../data/questions'
+import { calculateResult } from '../engine/scoring'
 
 const TOTAL = questions.length
 
@@ -20,37 +20,34 @@ const Quiz = () => {
   const progress = ((Math.max(highestIndex, index) + (selected !== null ? 1 : 0)) / TOTAL) * 100
 
   const handleSelect = useCallback((optIdx) => {
-    if (selected === optIdx) {
-      // 点击已选的直接跳到下一题
-      if (index < TOTAL - 1) {
-        setDirection(1)
-        setTimeout(() => setIndex(prev => prev + 1), 250)
-      } else if (index === TOTAL - 1 && answers.every(a => a !== null)) {
-        submitQuiz(answers)
-      }
-      return
+    // 计算生效的答案数组：新选择则更新对应位置，重选则保持原样
+    const effectiveAnswers = selected === optIdx
+      ? answers
+      : (() => { const next = [...answers]; next[index] = optIdx; return next })()
+
+    if (selected !== optIdx) {
+      setAnswers(effectiveAnswers)
     }
 
-    const next = [...answers]
-    next[index] = optIdx
-    setAnswers(next)
+    const delay = selected === optIdx ? 250 : 400
 
-    // 延迟跳题或结算，让用户看到选中状态
     setTimeout(() => {
-      if (index === TOTAL - 1) {
-        if (next.every(a => a !== null)) submitQuiz(next)
-      } else {
+      if (index === TOTAL - 1 && effectiveAnswers.every(a => a !== null)) {
+        submitQuiz(effectiveAnswers)
+      } else if (index < TOTAL - 1) {
         setDirection(1)
-        setHighestIndex(prev => Math.max(prev, index + 1))
+        if (selected !== optIdx) {
+          setHighestIndex(prev => Math.max(prev, index + 1))
+        }
         setIndex(prev => prev + 1)
       }
-    }, 400)
+    }, delay)
   }, [index, answers, selected, navigate])
 
-  const submitQuiz = (finalAnsArray) => {
+  const submitQuiz = async (finalAnsArray) => {
     const finalAnswers = finalAnsArray.map((opt, i) => ({ questionId: i + 1, optionIndex: opt }))
     const result = calculateResult(finalAnswers)
-    const encoded = btoa(JSON.stringify(finalAnswers))
+    
     sessionStorage.setItem('quizResult', JSON.stringify({
       type: result.type,
       runnerUp: result.runnerUp,
@@ -59,6 +56,31 @@ const Quiz = () => {
       detectedTeam: result.detectedTeam,
       answers: finalAnswers,
     }))
+
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || ''
+      const res = await fetch(`${API_BASE}/api/result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type_code: result.type.code,
+          runner_up: result.runnerUp?.code || null,
+          detected_team: result.detectedTeam,
+          answers: finalAnswers,
+        })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.id) {
+          navigate(`/result/${result.type.code}?id=${data.id}`)
+          return
+        }
+      }
+    } catch (e) {
+      console.error('Failed to submit result', e)
+    }
+
+    const encoded = btoa(JSON.stringify(finalAnswers))
     navigate(`/result/${result.type.code}?ans=${encoded}`)
   }
 

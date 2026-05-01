@@ -1,8 +1,18 @@
-// 题目数据：18 道题，每题 4 个选项，标注维度分值和主队探测
-// 维度: T(Team Loyalty), E(Emotion), S(Social), K(Knowledge), R(Resilience)
-// 分值: ++ → +2, + → +1, - → -1, -- → -2
+export interface Option {
+  text: string;
+  scores: Partial<Record<'T' | 'E' | 'S' | 'K' | 'R', number>>;
+  teamHint?: Record<string, number>;
+  fanType?: 'core' | 'neutral' | 'casual';
+}
 
-export const questions = [
+export interface Question {
+  id: number;
+  text: string;
+  category: string;
+  options: Option[];
+}
+
+export const questions: Question[] = [
   {
     id: 1,
     text: '你的主队最近战绩不佳，此时你刷到死敌赢球的新闻，你的第一反应是？',
@@ -201,27 +211,27 @@ export const questions = [
       { text: '永远稳定在前六，不折腾', scores: { R: 1, T: 1 }, fanType: 'core' },
     ],
   },
-]
+];
 
 // 运行时自动计算每维度最大可能绝对值，避免改题后忘记同步
-function computeMaxPossibleScores() {
-  const dims = ['T', 'E', 'S', 'K', 'R']
-  const maxes = {}
+function computeMaxPossibleScores(): Record<string, number> {
+  const dims = ['T', 'E', 'S', 'K', 'R'];
+  const maxes: Record<string, number> = {};
   for (const dim of dims) {
-    let total = 0
+    let total = 0;
     for (const q of questions) {
-      let maxAbs = 0
+      let maxAbs = 0;
       for (const opt of q.options) {
-        const val = opt.scores[dim] || 0
-        if (Math.abs(val) > maxAbs) maxAbs = Math.abs(val)
+        const val = opt.scores[dim as 'T' | 'E' | 'S' | 'K' | 'R'] || 0;
+        if (Math.abs(val) > maxAbs) maxAbs = Math.abs(val);
       }
-      total += maxAbs
+      total += maxAbs;
     }
-    maxes[dim] = total
+    maxes[dim] = total;
   }
-  return maxes
+  return maxes;
 }
 
-export const maxPossibleScores = computeMaxPossibleScores()
+export const maxPossibleScores = computeMaxPossibleScores();
 
-export default questions
+export default questions;

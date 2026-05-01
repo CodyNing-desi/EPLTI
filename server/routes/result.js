@@ -1,28 +1,55 @@
 import { Router } from 'express'
 import { getPool } from '../db.js'
+import { rateLimit } from '../middleware/rateLimit.js'
 
 const router = Router()
+
+// POST 接口严格限频，防止刷数据
+const strictLimit = rateLimit({ max: 10 })
 
 const VALID_TYPES = new Set([
   'ZERO', 'WENGER', 'CTRL', 'SAF', 'QHI', 'M', 'HOLD', 'RIDE',
   'CAPS', 'REF', 'LOL', 'XXXX', 'CLOUD', 'FREE',
 ])
 
-router.post('/result', async (req, res) => {
+router.post('/result', strictLimit, async (req, res) => {
   try {
     const { type_code, runner_up, detected_team, answers } = req.body
     if (!type_code || !VALID_TYPES.has(type_code)) {
       return res.status(400).json({ ok: false, error: 'Invalid type_code' })
     }
     const pool = getPool()
-    await pool.execute(
+    const [resultInfo] = await pool.execute(
       `INSERT INTO quiz_results (type_code, runner_up, detected_team, answers) VALUES (?, ?, ?, ?)`,
       [type_code, runner_up || null, detected_team || null, answers ? JSON.stringify(answers) : null]
     )
     const stats = await queryStats(pool)
-    res.json({ ok: true, stats })
+    res.json({ ok: true, id: resultInfo.insertId, stats })
   } catch (err) {
     console.error('POST /api/result error:', err)
+    res.status(500).json({ ok: false, error: 'Internal server error' })
+  }
+})
+
+router.get('/result/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    if (!id || isNaN(Number(id))) return res.status(400).json({ ok: false, error: 'Invalid id' })
+    const pool = getPool()
+    const [rows] = await pool.execute(`SELECT * FROM quiz_results WHERE id = ?`, [id])
+    if (rows.length === 0) return res.status(404).json({ ok: false, error: 'Result not found' })
+    const result = rows[0]
+    res.json({
+      ok: true,
+      data: {
+        type_code: result.type_code,
+        runner_up: result.runner_up,
+        detected_team: result.detected_team,
+        answers: result.answers ? (typeof result.answers === 'string' ? JSON.parse(result.answers) : result.answers) : null
+      }
+    })
+  } catch (err) {
+    console.error('GET /api/result/:id error:', err)
     res.status(500).json({ ok: false, error: 'Internal server error' })
   }
 })
