@@ -20,31 +20,47 @@ const Quiz = () => {
   const progress = ((Math.max(highestIndex, index) + (selected !== null ? 1 : 0)) / TOTAL) * 100
 
   const handleSelect = useCallback((optIdx) => {
-    if (selected !== null) return
+    if (selected === optIdx) {
+      // 点击已选的直接跳到下一题
+      if (index < TOTAL - 1) {
+        setDirection(1)
+        setTimeout(() => setIndex(prev => prev + 1), 250)
+      } else if (index === TOTAL - 1 && answers.every(a => a !== null)) {
+        submitQuiz(answers)
+      }
+      return
+    }
+
     const next = [...answers]
     next[index] = optIdx
     setAnswers(next)
 
-    // 最后一题选完直接结算
-    if (index === TOTAL - 1) {
-      const finalAnswers = next.map((opt, i) => ({ questionId: i + 1, optionIndex: opt }))
-      const result = calculateResult(finalAnswers)
-      const encoded = btoa(JSON.stringify(finalAnswers))
-      sessionStorage.setItem('quizResult', JSON.stringify({
-        type: result.type,
-        runnerUp: result.runnerUp,
-        normalized: result.normalized,
-        rawScores: result.rawScores,
-        detectedTeam: result.detectedTeam,
-        answers: finalAnswers,
-      }))
-      setTimeout(() => navigate(`/result/${result.type.code}?ans=${encoded}`), 400)
-    } else {
-      setDirection(1)
-      setHighestIndex(prev => Math.max(prev, index + 1))
-      setTimeout(() => setIndex(prev => prev + 1), 400)
-    }
+    // 延迟跳题或结算，让用户看到选中状态
+    setTimeout(() => {
+      if (index === TOTAL - 1) {
+        if (next.every(a => a !== null)) submitQuiz(next)
+      } else {
+        setDirection(1)
+        setHighestIndex(prev => Math.max(prev, index + 1))
+        setIndex(prev => prev + 1)
+      }
+    }, 400)
   }, [index, answers, selected, navigate])
+
+  const submitQuiz = (finalAnsArray) => {
+    const finalAnswers = finalAnsArray.map((opt, i) => ({ questionId: i + 1, optionIndex: opt }))
+    const result = calculateResult(finalAnswers)
+    const encoded = btoa(JSON.stringify(finalAnswers))
+    sessionStorage.setItem('quizResult', JSON.stringify({
+      type: result.type,
+      runnerUp: result.runnerUp,
+      normalized: result.normalized,
+      rawScores: result.rawScores,
+      detectedTeam: result.detectedTeam,
+      answers: finalAnswers,
+    }))
+    navigate(`/result/${result.type.code}?ans=${encoded}`)
+  }
 
   const goBack = () => {
     if (index === 0) return
@@ -130,13 +146,10 @@ const Quiz = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: optIdx * 0.08, duration: 0.35 }}
                     onClick={() => handleSelect(optIdx)}
-                    disabled={selected !== null}
                     className={`w-full text-left p-5 min-h-[3.5rem] rounded-2xl border transition-all duration-300 ${
                       isSelected
                         ? 'border-emerald-500 bg-emerald-50 shadow-sm text-emerald-900 font-medium'
-                        : selected === null
-                          ? 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-sm text-gray-700'
-                          : 'bg-white border-gray-200 opacity-40 text-gray-700'
+                        : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-sm text-gray-700'
                     }`}
                   >
                     <span className="text-sm leading-relaxed">{opt.text}</span>

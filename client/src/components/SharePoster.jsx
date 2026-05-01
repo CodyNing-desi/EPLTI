@@ -77,8 +77,9 @@ const SharePoster = forwardRef(({ type, normalized, teamColor, percentage, total
             {/* 品牌 */}
             <div className="text-center mb-6">
               <p className="text-xs tracking-[0.3em] text-gray-500 uppercase mb-1">Premier League Type Indicator</p>
-              <h2 className="text-3xl font-black tracking-tight">
-                英超<span className="gradient-text">TI</span>
+              <h2 className="text-3xl font-black tracking-tighter flex items-center justify-center gap-1">
+                <span style={{ color: '#38003C' }}>英超</span>
+                <span style={{ color: '#E90052' }}>TI</span>
               </h2>
             </div>
 

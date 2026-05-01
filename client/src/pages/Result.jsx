@@ -438,38 +438,44 @@ const Result = () => {
           </motion.div>
         )}
 
-        {/* 操作按钮 */}
-        <motion.div variants={item} className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
+        {/* 操作按钮保留在底部作为备用 */}
+        <div className="h-24"></div> {/* 为底部固定栏留白 */}
+      </motion.div>
+
+      {/* 悬浮底部操作栏 */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-200 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <div className="max-w-xl mx-auto flex flex-col sm:flex-row gap-3 justify-center">
           <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => setShowPoster(true)}
-            className="flex items-center justify-center gap-2 px-8 py-3.5 font-bold text-white rounded-full shadow-md transition"
+            className="flex-1 flex items-center justify-center gap-2 px-8 py-3.5 font-bold text-white rounded-2xl shadow-lg transition"
             style={{ backgroundColor: teamColor }}
           >
-            <Share2 className="w-4 h-4" />
-            生成分享海报
+            <Share2 className="w-5 h-5" />
+            一键生成并保存图片
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-            onClick={() => navigate('/quiz')}
-            className="flex items-center justify-center gap-2 px-8 py-3.5 font-bold text-gray-700 bg-white border border-gray-200 shadow-sm rounded-full hover:bg-gray-50 transition"
-          >
-            <RotateCcw className="w-4 h-4" />
-            重新测试
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-            onClick={() => navigate('/')}
-            className="flex items-center justify-center gap-2 px-8 py-3.5 font-bold text-gray-500 rounded-full hover:bg-gray-100 transition"
-          >
-            <Home className="w-4 h-4" />
-            首页
-          </motion.button>
-        </motion.div>
-      </motion.div>
+          
+          <div className="flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/quiz')}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 font-bold text-gray-700 bg-white border border-gray-200 shadow-sm rounded-2xl hover:bg-gray-50 transition"
+            >
+              <RotateCcw className="w-5 h-5" />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/')}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 font-bold text-gray-500 bg-gray-50 rounded-2xl hover:bg-gray-100 transition"
+            >
+              <Home className="w-5 h-5" />
+            </motion.button>
+          </div>
+        </div>
+      </div>
 
       {/* 底部装饰 */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-gray-400 font-medium uppercase tracking-[0.2em] pointer-events-none z-0">
