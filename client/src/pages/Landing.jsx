@@ -8,7 +8,15 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* 极简背景，移除花哨的光效 */}
+      {/* 足球场中圈与中线背景水印 */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.04] pointer-events-none z-0">
+        <svg width="800" height="800" viewBox="0 0 100 100" className="text-gray-900">
+          <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="1" />
+          <line x1="50" y1="0" x2="50" y2="100" stroke="currentColor" strokeWidth="1" />
+          <circle cx="50" cy="50" r="12" fill="none" stroke="currentColor" strokeWidth="1" />
+          <circle cx="50" cy="50" r="1" fill="currentColor" />
+        </svg>
+      </div>
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -26,14 +34,16 @@ const Landing = () => {
           </span>
         </div>
 
-        <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter">
-          英超<span className="gradient-text">TI</span>
+        <h1 className="text-7xl md:text-8xl font-black mb-6 tracking-tighter flex items-center justify-center gap-2">
+          {/* 使用英超标志性紫红色 */}
+          <span style={{ color: '#38003C' }} className="drop-shadow-sm">英超</span>
+          <span style={{ color: '#E90052' }}>TI</span>
         </h1>
 
-        <p className="text-lg md:text-xl text-gray-500 mb-12 leading-relaxed max-w-lg mx-auto">
+        <p className="text-lg md:text-xl text-gray-600 mb-12 leading-relaxed max-w-lg mx-auto font-medium">
           挖掘你看球时的真实心理动机。<br />
           是死忠、懂球帝，还是纯粹的乐子人？<br />
-          18 道题，看透你的英超底色。
+          <span className="text-gray-900 font-bold mt-2 block">18 道题，看透你的看球底色。</span>
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12 text-left">
@@ -61,10 +71,12 @@ const Landing = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate('/quiz')}
-          className="group relative inline-flex items-center justify-center px-12 py-4 font-bold text-white transition-all duration-200 bg-gray-900 rounded-full hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 shadow-md hover:shadow-lg"
+          className="group relative inline-flex items-center justify-center px-14 py-4 font-black text-white text-lg transition-all duration-200 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-xl hover:shadow-2xl overflow-hidden"
+          style={{ backgroundColor: '#38003C' }}
         >
+          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
           开始测试
-          <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          <ChevronRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
         </motion.button>
 
         <div className="mt-16 flex items-center justify-center space-x-8 text-gray-400">

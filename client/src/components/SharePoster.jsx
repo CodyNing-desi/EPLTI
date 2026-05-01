@@ -10,7 +10,7 @@ const dimOrder = ['T', 'E', 'S', 'K', 'R']
 // 测试入口 URL（部署后 VITE_APP_URL 环境变量会自动填充）
 const QUIZ_URL = (import.meta.env.VITE_APP_URL || window.location.origin) + '/quiz'
 
-const SharePoster = forwardRef(({ type, normalized, teamColor, onClose }, ref) => {
+const SharePoster = forwardRef(({ type, normalized, teamColor, percentage, total, onClose }, ref) => {
   const [isCapturing, setIsCapturing] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState('')
 
@@ -134,9 +134,20 @@ const SharePoster = forwardRef(({ type, normalized, teamColor, onClose }, ref) =
             )}
 
             {/* 描述摘要 */}
-            <p className="text-[11px] text-gray-500 text-center leading-relaxed mb-6 px-2 font-medium">
+            <p className="text-[11px] text-gray-500 text-center leading-relaxed mb-5 px-2 font-medium">
               {type.description.slice(0, 120)}...
             </p>
+
+            {/* 全网统计 */}
+            {percentage > 0 && (
+              <div className="flex justify-center mb-5">
+                <div className="px-4 py-1.5 rounded-full bg-gray-50 border border-gray-100 flex items-center gap-2 shadow-sm">
+                  <span className="text-[10px] text-gray-500 font-medium">全网有</span>
+                  <span className="text-sm font-black" style={{ color: teamColor }}>{percentage}%</span>
+                  <span className="text-[10px] text-gray-500 font-medium">的人和你一样</span>
+                </div>
+              </div>
+            )}
 
             {/* 标签 */}
             <div className="flex flex-wrap justify-center gap-1.5 mb-8">

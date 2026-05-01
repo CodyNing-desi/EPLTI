@@ -227,6 +227,8 @@ const Result = () => {
           type={type}
           normalized={normalized}
           teamColor={teamColor}
+          percentage={stats?.types[code]?.percentage ?? 0}
+          total={stats?.total ?? 0}
           onClose={() => setShowPoster(false)}
         />
       )}
