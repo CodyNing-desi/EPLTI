@@ -10,11 +10,16 @@ const dimOrder = ['T', 'E', 'S', 'K', 'R']
 // 测试入口 URL（指向首页而不是 /quiz，增加首页参与感）
 const QUIZ_URL = import.meta.env.VITE_APP_URL || window.location.origin
 
-const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }) => {
+const SharePoster = ({ type, normalized, teamColor, percentage, total, detectedTeam, onClose }) => {
   const [isCapturing, setIsCapturing] = useState(true)
   const [qrDataUrl, setQrDataUrl] = useState('')
+  const [theme, setTheme] = useState('light')
+  const [aiTagline, setAiTagline] = useState('')
+  const [seasonInfo, setSeasonInfo] = useState(null)
   const [finalImage, setFinalImage] = useState(null)
   const posterRef = useRef(null)
+
+  const API_BASE = import.meta.env.VITE_API_URL || ''
 
   useEffect(() => {
     QRCode.toDataURL(QUIZ_URL, {
@@ -22,6 +27,22 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
       margin: 1,
       color: { dark: '#111111', light: '#ffffff' },
     }).then(setQrDataUrl).catch(() => {})
+
+    // 获取赛季信息
+    fetch(`${API_BASE}/api/season-context`)
+      .then(res => res.json())
+      .then(data => setSeasonInfo(data))
+      .catch(() => {})
+
+    // 获取 AI 海报金句
+    fetch(`${API_BASE}/api/ai/poster-line`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type_code: type.code, detected_team: detectedTeam })
+    })
+      .then(res => res.json())
+      .then(data => { if (data.ok) setAiTagline(data.line) })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -29,6 +50,7 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
     if (!qrDataUrl || !posterRef.current) return
 
     let mounted = true
+    setIsCapturing(true)
     const generateImage = async () => {
       // 稍微延迟一下，确保所有字体和图片都已渲染
       await new Promise(r => setTimeout(r, 500))
@@ -58,7 +80,7 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
 
     generateImage()
     return () => { mounted = false }
-  }, [qrDataUrl])
+  }, [qrDataUrl, theme])
 
   const handleDownload = useCallback(() => {
     if (!finalImage) return
@@ -71,8 +93,14 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center overflow-hidden">
       
-      {/* 顶部关闭按钮（固定） */}
-      <div className="absolute top-4 right-4 z-50">
+      {/* 顶部工具栏 */}
+      <div className="absolute top-4 left-0 right-0 z-50 flex justify-between px-4">
+        <button 
+          onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')} 
+          className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition backdrop-blur-md text-white text-xs font-bold flex items-center gap-2"
+        >
+          {theme === 'light' ? '🌙 暗黑模版' : '☀️ 亮色模版'}
+        </button>
         <button onClick={onClose} className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 transition backdrop-blur-md">
           <X className="w-5 h-5 text-white" />
         </button>
@@ -129,8 +157,8 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
         <div
           ref={posterRef}
           data-poster="true"
-          className="bg-white overflow-hidden w-[375px]"
-          style={{ border: `1px solid ${teamColor}30` }}
+          className={`overflow-hidden w-[375px] ${theme === 'dark' ? 'bg-[#111111] text-white' : 'bg-white text-gray-900'}`}
+          style={{ border: `1px solid ${teamColor}${theme === 'dark' ? '50' : '30'}` }}
         >
           {/* 顶部色带 */}
           <div className="h-3" style={{ backgroundColor: teamColor }} />
@@ -138,7 +166,7 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
           <div className="p-8 pb-10">
             {/* 品牌 */}
             <div className="text-center mb-6">
-              <p className="text-xs tracking-[0.3em] text-gray-500 uppercase mb-1">Premier League Type Indicator</p>
+              <p className={`text-xs tracking-[0.3em] uppercase mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Premier League Type Indicator</p>
               <h2 className="text-3xl font-black tracking-tighter flex items-center justify-center gap-1">
                 <span style={{ color: '#38003C' }}>英超</span>
                 <span style={{ color: '#E90052' }}>TI</span>
@@ -147,11 +175,11 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
 
             {/* 徽章 */}
             <div className="flex justify-center gap-2 mb-6">
-              <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+              <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'bg-white/10 text-gray-300 border-white/5' : 'bg-gray-50 text-gray-500 border-gray-100'} border`}>
                 Personality Type
               </span>
               {type.team !== 'GEN' && (
-                <span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[10px] font-bold text-gray-500 tracking-widest">
+                <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-widest ${theme === 'dark' ? 'bg-white/10 text-gray-300 border-white/5' : 'bg-gray-50 text-gray-500 border-gray-100'} border`}>
                   {teamNames[type.team]}
                 </span>
               )}
@@ -172,7 +200,8 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
                 <p className="text-sm font-black tracking-widest uppercase mb-1.5" style={{ color: teamColor }}>
                   {type.code}
                 </p>
-                <h1 className="text-4xl font-black tracking-tight text-gray-900 break-words leading-tight px-2">
+                <h1 className={`text-4xl font-black tracking-tight break-words leading-tight px-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {type.emoji && <span className="mr-2">{type.emoji}</span>}
                   {type.name}
                 </h1>
               </div>
@@ -180,7 +209,7 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
 
             {/* 插图预留区 */}
             <div className="flex justify-center mb-6">
-              <div className="w-44 h-44 bg-gray-50/50 rounded-full flex items-center justify-center relative overflow-hidden">
+              <div className={`w-44 h-44 rounded-full flex items-center justify-center relative overflow-hidden ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50/50'}`}>
                  <img 
                    src={`/images/${type.code}.png`} 
                    alt={type.name} 
@@ -190,9 +219,14 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
             </div>
 
             {/* Tagline */}
-            <p className="text-sm text-gray-500 text-center font-medium mb-6 leading-relaxed">
-              "{type.tagline}"
-            </p>
+            <div className="px-4 mb-6">
+              <p className={`text-sm text-center font-bold italic leading-relaxed ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
+                "{aiTagline || type.tagline}"
+              </p>
+              {aiTagline && (
+                <p className="text-[8px] text-gray-300 text-center mt-1 uppercase tracking-tighter">AI Generated Insight</p>
+              )}
+            </div>
 
             {/* 五维分数条 */}
             {normalized && (
@@ -203,7 +237,7 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
                   return (
                     <div key={dim} className="flex items-center gap-2">
                       <span className="w-7 text-[10px] font-bold text-gray-400 text-right">{dimLabels[dim]}</span>
-                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className={`flex-1 h-2 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-100'}`}>
                         <div
                           className="h-full rounded-full"
                           style={{ width: `${pct}%`, backgroundColor: teamColor }}
@@ -216,15 +250,15 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
             )}
 
             {/* 描述摘要 */}
-            <p className="text-[11px] text-gray-500 text-center leading-relaxed mb-5 px-2 font-medium">
+            <p className={`text-[11px] text-center leading-relaxed mb-5 px-2 font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
               {type.description.slice(0, 120)}...
             </p>
 
             {/* 全网统计 */}
             {percentage > 0 && (
               <div className="flex justify-center mb-5">
-                <div className="px-4 py-1.5 rounded-full bg-gray-50 border border-gray-100 flex items-center gap-2 shadow-sm">
-                  <span className="text-[10px] text-gray-500 font-medium">全网有</span>
+                <div className={`px-4 py-1.5 rounded-full flex items-center gap-2 shadow-sm border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-100'}`}>
+                  <span className={`text-[10px] font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>全网有</span>
                   <span className="text-sm font-black" style={{ color: teamColor }}>{percentage}%</span>
                   <span className="text-[10px] text-gray-500 font-medium">的人和你一样</span>
                 </div>
@@ -234,21 +268,24 @@ const SharePoster = ({ type, normalized, teamColor, percentage, total, onClose }
             {/* 标签 */}
             <div className="flex flex-wrap justify-center gap-1.5 mb-8">
               {type.tags.map(tag => (
-                <span key={tag} className="px-3 py-1 text-[10px] rounded-full border border-gray-200 text-gray-500 bg-gray-50 font-medium">
+                <span key={tag} className={`px-3 py-1 text-[10px] rounded-full border font-medium ${theme === 'dark' ? 'border-white/20 text-gray-300 bg-white/5' : 'border-gray-200 text-gray-500 bg-gray-50'}`}>
                   {tag}
                 </span>
               ))}
             </div>
 
             {/* 底部：二维码 + 文字 */}
-            <div className="flex items-center gap-4 mt-2 pt-4 border-t border-gray-100">
+            <div className={`flex items-center gap-4 mt-2 pt-4 border-t ${theme === 'dark' ? 'border-white/10' : 'border-gray-100'}`}>
               {qrDataUrl ? (
-                <img src={qrDataUrl} alt="扫码测试" className="w-16 h-16 rounded-lg flex-shrink-0" />
+                <img src={qrDataUrl} alt="扫码测试" className={`w-16 h-16 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'brightness-90 contrast-125 mix-blend-screen' : ''}`} />
               ) : (
-                <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0" />
+                <div className={`w-16 h-16 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-100'}`} />
               )}
               <div>
-                <p className="text-xs font-black text-gray-800 leading-tight mb-1">扫码测测你的球迷人格</p>
+                <p className={`text-xs font-black leading-tight mb-1 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-800'}`}>
+                  扫码测测你的球迷人格
+                  {seasonInfo && <span className="ml-1 text-gray-300 font-medium">· GW{seasonInfo.gameweek}</span>}
+                </p>
                 <p className="text-[10px] text-gray-400 leading-relaxed">Premier League Type Indicator</p>
                 <p className="text-[10px] font-mono text-gray-400">{QUIZ_URL.replace('https://', '')}</p>
               </div>

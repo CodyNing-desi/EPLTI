@@ -4,6 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { questions } from '../data/questions'
 import { calculateResult } from '../engine/scoring'
+import { questionContexts } from '../data/question-context'
+import { useEffect } from 'react'
+
+const API_BASE = import.meta.env.VITE_API_URL || ''
 
 const TOTAL = questions.length
 
@@ -13,6 +17,15 @@ const Quiz = () => {
   const [highestIndex, setHighestIndex] = useState(0) // 追踪最高进度，防止回退时进度条倒流
   const [answers, setAnswers] = useState(Array(TOTAL).fill(null))
   const [direction, setDirection] = useState(1) // 1=前进, -1=后退
+  const [seasonCtx, setSeasonCtx] = useState(null)
+
+  // 拉取赛季上下文
+  useEffect(() => {
+    fetch(`${API_BASE}/api/season-context`)
+      .then(res => res.json())
+      .then(data => setSeasonCtx(data))
+      .catch(err => console.error('Season Context load failed:', err))
+  }, [])
 
   const currentQ = questions[index]
   const selected = answers[index]
@@ -67,6 +80,8 @@ const Quiz = () => {
           runner_up: result.runnerUp?.code || null,
           detected_team: result.detectedTeam,
           answers: finalAnswers,
+          normalized: result.normalized,
+          gameweek: seasonCtx?.gameweek || 0
         })
       })
       if (res.ok) {
@@ -152,6 +167,15 @@ const Quiz = () => {
           >
             {/* 题目文本 */}
             <div className="mb-8">
+              {seasonCtx && questionContexts[currentQ.id] && (
+                <motion.p 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="text-xs text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl mb-4 font-bold border border-emerald-100 shadow-sm whitespace-pre-wrap"
+                >
+                  {questionContexts[currentQ.id](seasonCtx)}
+                </motion.p>
+              )}
               <h2 className="text-2xl md:text-3xl font-bold leading-relaxed">
                 {currentQ.text}
               </h2>

@@ -1,11 +1,13 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Share2, Download, RotateCcw, Home, Users } from 'lucide-react'
+import { Share2, Download, RotateCcw, Home, Users, MessageSquare } from 'lucide-react'
 import { types, teamNames } from '../data/types'
 import { calculateResult } from '../engine/scoring'
 import SharePoster from '../components/SharePoster.jsx'
+import ChatDrawer from '../components/ChatDrawer.jsx'
 import { useWechatShare } from '../hooks/useWechatShare'
+import { useTestHistory } from '../hooks/useTestHistory'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
@@ -102,7 +104,12 @@ const Result = () => {
   const navigate = useNavigate()
   const [showPoster, setShowPoster] = useState(false)
   const [stats, setStats] = useState(null)
+  const [seasonCtx, setSeasonCtx] = useState(null)
+  const [aiInsight, setAiInsight] = useState(null)
+  const [loadingAI, setLoadingAI] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const posterRef = useRef(null)
+  const { history, addHistory } = useTestHistory()
 
   const type = types.find(t => t.code === code)
 
@@ -205,6 +212,83 @@ const Result = () => {
     fetchStats()
   }, [code])
 
+  // 拉取赛季上下文
+  useEffect(() => {
+    fetch(`${API_BASE}/api/season-context`)
+      .then(res => res.json())
+      .then(data => setSeasonCtx(data))
+      .catch(err => console.error('Season Context load failed:', err))
+  }, [])
+
+  // 请求 AI 个性化解读
+  useEffect(() => {
+    if (!code || !normalized) return
+    setLoadingAI(true)
+    setAiInsight('') // 重置内容
+
+    const fetchInsight = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/ai/insight`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type_code: code,
+            normalized,
+            detected_team: detectedTeam,
+            stream: true // 开启流式
+          })
+        })
+
+        if (!res.ok) throw new Error('Fetch failed')
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let done = false
+        let fullContent = ''
+
+        while (!done) {
+          const { value, done: doneReading } = await reader.read()
+          done = doneReading
+          const chunkValue = decoder.decode(value)
+          
+          const lines = chunkValue.split('\n')
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.slice(6)
+              if (dataStr === '[DONE]') break
+              try {
+                const data = JSON.parse(dataStr)
+                const content = data.choices[0]?.delta?.content || ''
+                fullContent += content
+                setAiInsight(fullContent)
+              } catch (e) { /* ignore */ }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('AI Insight streaming failed:', err)
+        setAiInsight('抱歉，AI 洞察生成失败。请稍后再试。')
+      } finally {
+        setLoadingAI(false)
+      }
+    }
+
+    fetchInsight()
+  }, [code, normalized, detectedTeam])
+
+  // 记录到本地历史
+  useEffect(() => {
+    if (code && normalized && seasonCtx) {
+      addHistory({
+        code,
+        name: type.name,
+        normalized,
+        gameweek: seasonCtx.gameweek,
+        team: type.team
+      })
+    }
+  }, [code, normalized, seasonCtx, type.name, type.team, addHistory])
+
   if (loadingRecover) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -257,6 +341,7 @@ const Result = () => {
           teamColor={teamColor}
           percentage={stats?.types[code]?.percentage ?? 0}
           total={stats?.total ?? 0}
+          detectedTeam={detectedTeam}
           onClose={() => setShowPoster(false)}
         />
       )}
@@ -388,6 +473,80 @@ const Result = () => {
           </p>
         </motion.div>
 
+        {/* AI 个性化解读卡片 */}
+        {(loadingAI || aiInsight) && (
+          <motion.div 
+            variants={item} 
+            className="p-6 rounded-2xl bg-gradient-to-br from-indigo-50 via-white to-purple-50 border border-indigo-100 shadow-sm mb-6 relative overflow-hidden"
+          >
+            {/* 背景装饰 */}
+            <div className="absolute -top-12 -right-12 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl" />
+            
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex space-x-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+              <h3 className="text-xs font-bold text-indigo-600 uppercase tracking-widest">AI 赛季洞察报告</h3>
+            </div>
+
+            {loadingAI ? (
+              <div className="space-y-3">
+                <div className="h-4 bg-gray-100 rounded w-full animate-pulse" />
+                <div className="h-4 bg-gray-100 rounded w-5/6 animate-pulse" />
+                <div className="h-4 bg-gray-100 rounded w-4/6 animate-pulse" />
+              </div>
+            ) : (
+              <div className="relative">
+                <p className="text-sm text-gray-700 leading-relaxed font-medium whitespace-pre-wrap italic">
+                  "{aiInsight}"
+                </p>
+                <div className="mt-4 pt-4 border-t border-indigo-100/50 flex justify-between items-center">
+                  <span className="text-[10px] text-gray-400 font-bold">POWERED BY MiMo AI</span>
+                  {seasonCtx && (
+                    <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-tighter">
+                      GW{seasonCtx.gameweek} EDITION
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* 赛季实时关联卡片 */}
+        {seasonCtx && detectedTeam && (
+          <motion.div variants={item} className="p-5 rounded-2xl bg-gray-900 text-white mb-6 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+            <div className="flex justify-between items-center mb-4 relative z-10">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
+                主队本轮情报 · 第 {seasonCtx.gameweek} 轮
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black" style={{ backgroundColor: teamColor }}>
+                {teamNames[detectedTeam]}
+              </span>
+            </div>
+            
+            <div className="flex items-end justify-between relative z-10">
+              <div>
+                <p className="text-3xl font-black italic tracking-tighter">
+                  积分榜第 {seasonCtx.standings.find(s => s.team === detectedTeam)?.pos || '??'} 名
+                </p>
+                <p className="text-xs text-gray-400 mt-1 font-medium">
+                  {seasonCtx.standings.find(s => s.team === detectedTeam)?.points || 0} 分 · {seasonCtx.mood[detectedTeam] || '观察中'}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-gray-500 mb-1">最近动态</p>
+                <p className="text-[11px] font-medium leading-tight max-w-[120px]">
+                  {seasonCtx.narrative.split('，')[1] || '争冠关键期'}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* 标签 */}
         <motion.div variants={item} className="flex flex-wrap justify-center gap-2 mb-8">
           {type.tags.map(tag => (
@@ -465,10 +624,70 @@ const Result = () => {
             </p>
           </motion.div>
         )}
+        {/* 历史记录卡片 (localStorage 版) */}
+        {history.length > 1 && (
+          <motion.div variants={item} className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm mb-6">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">你的测试历史</h3>
+            <div className="space-y-3">
+              {history.slice(1, 4).map((h, i) => {
+                const historyType = types.find(t => t.code === h.code)
+                return (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg font-black" style={{ color: teamColorMap[historyType?.team] || '#E90052' }}>
+                        {h.code}
+                      </span>
+                      <div>
+                        <p className="text-xs font-bold text-gray-900">{historyType?.name}</p>
+                        <p className="text-[10px] text-gray-400">第 {h.gameweek} 轮 · {new Date(h.timestamp).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-[10px] font-bold ${h.normalized.R >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        R: {h.normalized.R > 0 ? '+' : ''}{h.normalized.R.toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+
+        {/* AI 聊天机器人入口卡片 */}
+        <motion.div 
+          variants={item} 
+          className="p-6 rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-100 mb-6 relative overflow-hidden group cursor-pointer"
+          onClick={() => setIsChatOpen(true)}
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" />
+          <div className="relative z-10 flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-200">Exclusive AI Agent</span>
+              </div>
+              <h3 className="text-xl font-black mb-1">和专属分析师聊聊？</h3>
+              <p className="text-xs text-indigo-100 font-medium">深入探讨你的球迷人格，或者吐槽这周的逆天裁判...</p>
+            </div>
+            <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md">
+              <MessageSquare className="w-6 h-6" />
+            </div>
+          </div>
+        </motion.div>
 
         {/* 操作按钮保留在底部作为备用 */}
         <div className="h-24"></div> {/* 为底部固定栏留白 */}
       </motion.div>
+
+      {/* AI 对话抽屉 */}
+      <ChatDrawer 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+        type={type}
+        normalized={normalized}
+        detectedTeam={detectedTeam}
+      />
 
       {/* 悬浮底部操作栏 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-200 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">

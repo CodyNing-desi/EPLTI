@@ -18,6 +18,8 @@ export interface Type {
   bestCP: string;
   worstCP: string;
   ideal: Scores;
+  emoji: string;
+  color: string;
 }
 
 export const types: Type[] = [
@@ -33,6 +35,8 @@ export const types: Type[] = [
     bestCP: 'RIDE',
     worstCP: 'CTRL',
     ideal: { T: 4, E: 1, S: -1, K: 3, R: -4 },
+    emoji: '💊',
+    color: '#EF0107',
   },
   {
     code: 'WENGER',
@@ -45,6 +49,8 @@ export const types: Type[] = [
     bestCP: 'FREE',
     worstCP: 'CAPS',
     ideal: { T: 2, E: -2, S: -2, K: 4, R: 1 },
+    emoji: '🧣',
+    color: '#EF0107',
   },
   {
     code: 'CTRL',
@@ -57,6 +63,8 @@ export const types: Type[] = [
     bestCP: 'REF',
     worstCP: 'ZERO',
     ideal: { T: 2, E: -4, S: -2, K: 5, R: 3 },
+    emoji: '🎛️',
+    color: '#6CABDD',
   },
   {
     code: 'SAF',
@@ -69,6 +77,8 @@ export const types: Type[] = [
     bestCP: 'ZERO',
     worstCP: 'LOL',
     ideal: { T: 5, E: 1, S: -2, K: 1, R: 4 },
+    emoji: '🍷',
+    color: '#DA291C',
   },
   {
     code: 'QHI',
@@ -81,6 +91,8 @@ export const types: Type[] = [
     bestCP: 'CAPS',
     worstCP: 'SAF',
     ideal: { T: 3, E: 5, S: 4, K: -3, R: 5 },
+    emoji: '🔥',
+    color: '#DA291C',
   },
   {
     code: 'M',
@@ -93,6 +105,8 @@ export const types: Type[] = [
     bestCP: 'LOL',
     worstCP: 'CTRL',
     ideal: { T: 4, E: 1, S: 3, K: -1, R: -3 },
+    emoji: '🎭',
+    color: '#132257',
   },
   {
     code: 'HOLD',
@@ -105,6 +119,8 @@ export const types: Type[] = [
     bestCP: 'ZERO',
     worstCP: 'CLOUD',
     ideal: { T: 4, E: 2, S: 0, K: 1, R: -3 },
+    emoji: '💸',
+    color: '#034694',
   },
   {
     code: 'RIDE',
@@ -117,6 +133,8 @@ export const types: Type[] = [
     bestCP: 'M',
     worstCP: 'REF',
     ideal: { T: 3, E: 5, S: 3, K: -2, R: 2 },
+    emoji: '🎢',
+    color: '#C8102E',
   },
 
   // ==================== 跨球队通用 ====================
@@ -131,6 +149,8 @@ export const types: Type[] = [
     bestCP: 'QHI',
     worstCP: 'WENGER',
     ideal: { T: -4, E: 0, S: 1, K: 3, R: 4 },
+    emoji: '🏆',
+    color: '#EAB308', // yellow-500
   },
   {
     code: 'REF',
@@ -143,6 +163,8 @@ export const types: Type[] = [
     bestCP: 'CTRL',
     worstCP: 'XXXX',
     ideal: { T: -3, E: -5, S: -2, K: 5, R: 4 },
+    emoji: '⚖️',
+    color: '#64748B', // slate-500
   },
   {
     code: 'LOL',
@@ -155,6 +177,8 @@ export const types: Type[] = [
     bestCP: 'M',
     worstCP: 'SAF',
     ideal: { T: -5, E: 2, S: 5, K: -2, R: 3 },
+    emoji: '🍿',
+    color: '#F59E0B', // amber-500
   },
   {
     code: 'XXXX',
@@ -167,6 +191,8 @@ export const types: Type[] = [
     bestCP: 'QHI',
     worstCP: 'REF',
     ideal: { T: 0, E: 5, S: 5, K: -4, R: 2 },
+    emoji: '⚔️',
+    color: '#EF4444', // red-500
   },
   {
     code: 'CLOUD',
@@ -179,6 +205,8 @@ export const types: Type[] = [
     bestCP: 'LOL',
     worstCP: 'HOLD',
     ideal: { T: -3, E: -2, S: 2, K: -3, R: 1 },
+    emoji: '☁️',
+    color: '#38BDF8', // sky-400
   },
   {
     code: 'FREE',
@@ -191,6 +219,8 @@ export const types: Type[] = [
     bestCP: 'WENGER',
     worstCP: 'CAPS',
     ideal: { T: -1, E: -3, S: -4, K: 2, R: 4 },
+    emoji: '🍃',
+    color: '#10B981', // emerald-500
   },
 ]
 

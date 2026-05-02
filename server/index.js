@@ -1,12 +1,14 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
 import { initDB } from './db.js'
 import resultRoutes from './routes/result.js'
 import wechatRoutes from './routes/wechat.js'
+import aiRoutes from './routes/ai.js'
 import { rateLimit } from './middleware/rateLimit.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -14,6 +16,11 @@ const __dirname = path.dirname(__filename)
 
 const app = express()
 const PORT = process.env.PORT || 80
+
+// 安全头
+app.use(helmet({
+  contentSecurityPolicy: false, // SPA 有较多内联样式
+}))
 
 const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
@@ -31,6 +38,22 @@ app.use('/api', rateLimit({ max: 60 }))
 // API 路由
 app.use('/api', resultRoutes)
 app.use('/api/wechat', wechatRoutes)
+app.use('/api/ai', aiRoutes)
+
+// 新增：获取赛季动态上下文
+app.get('/api/season-context', (req, res) => {
+  try {
+    const contextPath = path.join(__dirname, 'data/season-context.json')
+    if (fs.existsSync(contextPath)) {
+      const context = JSON.parse(fs.readFileSync(contextPath, 'utf8'))
+      res.json(context)
+    } else {
+      res.status(404).json({ error: 'Season context not found' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load season context' })
+  }
+})
 
 // 健康检查
 app.get('/api/health', (req, res) => {
@@ -47,19 +70,28 @@ app.use((req, res, next) => {
     
     // 如果是分享结果页，注入动态 OG 标签
     if (req.path.startsWith('/result/') && fs.existsSync(htmlPath)) {
-      const typeCode = req.path.split('/')[2]
+      const typeCodeRaw = req.path.split('/')[2]
+      // 严格白名单过滤，只允许字母数字
+      const typeCode = typeCodeRaw.replace(/[^\w]/g, '').slice(0, 16)
+      
       let html = fs.readFileSync(htmlPath, 'utf8')
       const host = req.get('host') || 'localhost'
       
-      const ogTitle = `我是 ${typeCode} 型球迷，你也来测测吧！`
+      const escapeHTML = (str) => str.replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]))
+
+      const safeTypeCode = escapeHTML(typeCode)
+      const safeHost = escapeHTML(host)
+      const ogTitle = escapeHTML(`我是 ${typeCode} 型球迷，你也来测测吧！`)
       const ogDesc = `EPLTI - 深度英超球迷人格测试。基于独创的T-E-S-K-R模型。`
-      const ogImage = `http://${host}/images/${typeCode}.png` // 对应阶段 6 的插图
+      const ogImage = `https://${safeHost}/images/${safeTypeCode}.png` 
       
       const ogTags = `
     <meta property="og:title" content="${ogTitle}" />
     <meta property="og:description" content="${ogDesc}" />
     <meta property="og:image" content="${ogImage}" />
-    <meta property="og:url" content="http://${host}${req.originalUrl}" />
+    <meta property="og:url" content="https://${safeHost}${escapeHTML(req.originalUrl)}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${ogTitle}" />
     <meta name="twitter:description" content="${ogDesc}" />

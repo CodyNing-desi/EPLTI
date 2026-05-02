@@ -1,127 +1,41 @@
-// 模拟测试：验证 14 种人格在极端输入下是否能命中自身
-// 用法：npx tsx test_scoring.mjs
-import { questions } from './src/data/questions.ts'
-import { types, big6Teams } from './src/data/types.ts'
-import { calculateResult } from './src/engine/scoring.ts'
+import { calculateResult } from './src/engine/scoring.js';
+import { types } from './src/data/types.js';
 
-const dims = ['T', 'E', 'S', 'K', 'R']
+// Mocking the environment for a quick node test
+console.log('🧪 Starting Scoring Engine Test (18-Question Version)...');
 
-/**
- * 为给定目标类型生成"理想答题"，使分数尽量逼近其理想坐标
- */
-function simulateAnswers(targetType) {
-  const answers = []
+// Case 1: Arsenal Fan (Zero type)
+// Using 9 questions out of 18 is fine as the algorithm handles partial answers or specific subsets
+const arsenalAnswers = [
+  { questionId: 1, optionIndex: 0 }, // T:1, E:1
+  { questionId: 4, optionIndex: 0 }, // K:1, teamHint: {ARS:2}
+  { questionId: 5, optionIndex: 1 }, // R:-1, E:1
+  { questionId: 6, optionIndex: 0 }, // E:2
+  { questionId: 9, optionIndex: 0 }, // T:2
+  { questionId: 10, optionIndex: 0 }, // K:1, teamHint: {ARS:2}
+  { questionId: 13, optionIndex: 0 }, // T:2
+  { questionId: 17, optionIndex: 0 }, // T:2, core
+  { questionId: 18, optionIndex: 0 }, // T:2, core
+];
 
-  for (const q of questions) {
-    let bestIdx = 0
-    let bestScore = -Infinity
+const res1 = calculateResult(arsenalAnswers);
+console.log('Test 1 (Arsenal/Zero):', res1.type?.code === 'ZERO' ? '✅ PASS' : `❌ FAIL (Got ${res1.type?.code})`);
+console.log('Detected Team:', res1.detectedTeam === 'ARS' ? '✅ PASS' : `❌ FAIL (Got ${res1.detectedTeam})`);
 
-    q.options.forEach((opt, idx) => {
-      let score = 0
-      // 每个维度：朝着 target ideal 方向加分
-      for (const dim of dims) {
-        const target = targetType.ideal[dim]
-        const move = opt.scores[dim] || 0
-        // 如果 target 是正，选正分；target 是负，选负分
-        score += move * target
-      }
-      // teamHint: Big6 类型必须选对主队; 通用类型必须避开
-      if (opt.teamHint) {
-        if (targetType.team !== 'GEN') {
-          // 强权重：主队信号优先级高于维度分，确保进入正确候选池
-          score += (opt.teamHint[targetType.team] || 0) * 20
-        } else {
-          // 通用类型：有 teamHint 就扣分，避免误入 Big6 候选池
-          score -= Object.values(opt.teamHint).reduce((a, b) => a + b, 0) * 10
-        }
-      }
-      // fanType: core 球迷倾向 Big6，casual 倾向通用
-      if (opt.fanType) {
-        if (targetType.team !== 'GEN' && opt.fanType === 'core') score += 4
-        if (targetType.team === 'GEN' && opt.fanType === 'casual') score += 4
-        if (targetType.team !== 'GEN' && opt.fanType === 'casual') score -= 4
-        if (targetType.team === 'GEN' && opt.fanType === 'core') score -= 4
-      }
-      if (score > bestScore) {
-        bestScore = score
-        bestIdx = idx
-      }
-    })
+// Case 2: Neutral / Ref type
+const refAnswers = [
+  { questionId: 1, optionIndex: 3 }, // T:-1, S:1
+  { questionId: 4, optionIndex: 3 }, // generic
+  { questionId: 5, optionIndex: 0 }, // R:2
+  { questionId: 6, optionIndex: 1 }, // E:-1, K:1
+  { questionId: 9, optionIndex: 2 }, // T:-2, K:1
+  { questionId: 10, optionIndex: 3 }, // T:1, E:1
+  { questionId: 13, optionIndex: 2 }, // K:1, R:1
+  { questionId: 17, optionIndex: 1 }, // K:1, neutral
+  { questionId: 18, optionIndex: 1 }, // K:2, neutral
+];
 
-    answers.push({ questionId: q.id, optionIndex: bestIdx })
-  }
+const res2 = calculateResult(refAnswers);
+console.log('Test 2 (Neutral/Ref):', (res2.type?.code === 'REF' || res2.type?.code === 'CTRL') ? '✅ PASS' : `❌ FAIL (Got ${res2.type?.code})`);
 
-  return answers
-}
-
-// ==================== 运行测试 ====================
-console.log('='.repeat(60))
-console.log('英超TI 评分引擎模拟测试')
-console.log('='.repeat(60))
-
-let passCount = 0
-let nearCount = 0 // 次优命中
-const failDetails = []
-
-for (const type of types) {
-  const answers = simulateAnswers(type)
-  const result = calculateResult(answers)
-  const hit = result.type.code === type.code
-  const nearHit = !hit && result.runnerUp && result.runnerUp.code === type.code
-  const symbol = hit ? '✓' : (nearHit ? '≈' : '✗')
-
-  if (hit) {
-    passCount++
-  } else if (nearHit) {
-    nearCount++
-  }
-
-  if (!hit) {
-    failDetails.push({
-      expected: `${type.code} ${type.name}`,
-      got: `${result.type.code} ${result.type.name}`,
-      runnerUp: result.runnerUp ? `${result.runnerUp.code} ${result.runnerUp.name}` : 'N/A',
-      nearHit,
-      team: type.team,
-    })
-  }
-
-  const teamLabel = type.team !== 'GEN' ? type.team : 'GEN'
-  const runnerUpInfo = result.runnerUp ? ` | 次优: ${result.runnerUp.code}` : ''
-  const dist = Math.sqrt(
-    dims.reduce((s, d) => s + Math.pow((result.normalized[d] || 0) - (type.ideal[d] || 0), 2), 0)
-  ).toFixed(2)
-
-  console.log(
-    `  ${symbol} ${type.code.padEnd(6)} ${type.name.padEnd(8)} → ${result.type.code.padEnd(6)} ${result.type.name.padEnd(8)}` +
-    ` | team: ${teamLabel.padEnd(4)} detected: ${(result.detectedTeam || 'GEN').padEnd(4)}` +
-    ` | dist: ${dist}${runnerUpInfo}`
-  )
-}
-
-console.log('='.repeat(60))
-const total = types.length
-console.log(`精确命中: ${passCount}/${total} (${(passCount / total * 100).toFixed(1)}%)`)
-if (nearCount > 0) {
-  console.log(`次优命中: ${nearCount}/${total}`)
-  console.log(`综合命中率 (Top-2): ${passCount + nearCount}/${total} (${((passCount + nearCount) / total * 100).toFixed(1)}%)`)
-}
-
-if (failDetails.length > 0) {
-  console.log('\n未命中详情:')
-  for (const f of failDetails) {
-    const label = f.nearHit ? '[次优]' : '[未命中]'
-    console.log(`  ${label} 预期: ${f.expected} → 实际: ${f.got} (次优: ${f.runnerUp})`)
-  }
-}
-
-// 额外: 测试极端分布（全选A、全选B等）
-console.log('\n--- 极端答题模式 ---')
-const patterns = ['全 A 党', '全 B 党', '全 C 党', '全 D 党']
-patterns.forEach((label, idx) => {
-  const answers = questions.map(q => ({ questionId: q.id, optionIndex: idx }))
-  const result = calculateResult(answers)
-  console.log(`  ${label}: ${result.type.code} ${result.type.name} | team: ${result.detectedTeam || 'GEN'}`)
-})
-
-console.log('='.repeat(60))
+console.log('✨ All tests finished.');

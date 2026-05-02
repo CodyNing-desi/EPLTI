@@ -41,9 +41,33 @@ export async function initDB() {
       runner_up     VARCHAR(16)   DEFAULT NULL COMMENT '次优匹配类型',
       detected_team VARCHAR(8)    DEFAULT NULL COMMENT '检测到的主队',
       answers       JSON          DEFAULT NULL COMMENT '答案数组 JSON',
+      score_t       DECIMAL(4,2)  DEFAULT 0 COMMENT '死忠度分数',
+      score_e       DECIMAL(4,2)  DEFAULT 0 COMMENT '激情度分数',
+      score_s       DECIMAL(4,2)  DEFAULT 0 COMMENT '社交分分数',
+      score_k       DECIMAL(4,2)  DEFAULT 0 COMMENT '懂球分分数',
+      score_r       DECIMAL(4,2)  DEFAULT 0 COMMENT '韧性分分数',
+      gameweek      INT           DEFAULT 0 COMMENT '当时的轮次',
       created_at    DATETIME      DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_type_code (type_code),
-      INDEX idx_created_at (created_at)
+      INDEX idx_created_at (created_at),
+      INDEX idx_team_gw (detected_team, gameweek)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `)
+
+  // 赛季情绪大盘统计表
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS season_stats (
+      id            INT           AUTO_INCREMENT PRIMARY KEY,
+      gameweek      INT           NOT NULL,
+      detected_team VARCHAR(8)    NOT NULL,
+      avg_t         DECIMAL(4,2)  DEFAULT 0,
+      avg_e         DECIMAL(4,2)  DEFAULT 0,
+      avg_s         DECIMAL(4,2)  DEFAULT 0,
+      avg_k         DECIMAL(4,2)  DEFAULT 0,
+      avg_r         DECIMAL(4,2)  DEFAULT 0,
+      sample_size   INT           DEFAULT 0,
+      updated_at    DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE INDEX unq_gw_team (gameweek, detected_team)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `)
 
